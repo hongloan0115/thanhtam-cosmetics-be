@@ -1,0 +1,88 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+env.bak/
+venv.bak/
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# dotenv (environment variables)
+.env
+.env.*
+
+# IDEs / Editor
+.vscode/
+.idea/
+*.swp
+
+# Docker related
+*.pid
+*.log
+docker-compose.override.yml
+docker-compose.dev.yml
+Dockerfile.dev
+.docker/
+**/tmp/
+**/logs/
+
+# MySQL dumps
+*.sql
+*.sql.gz
+
+# Mypy / Pyre
+.mypy_cache/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# Coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Jupyter
+.ipynb_checkpoints
+
+# System files
+.DS_Store
+Thumbs.db
