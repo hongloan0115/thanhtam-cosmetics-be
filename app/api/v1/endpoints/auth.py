@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
-from app.schemas.user import UserRegister, UserLogin
+from app.schemas.user import UserRegister, UserLogin, UserOut
 from app.db.database import get_db
 from app.models.role import Role
 from app.models.user import User
 from app.crud.user import get_user_by_email
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import hash_password, verify_password, create_access_token, get_current_user
 from app.utils.utils import generate_username, generate_verification_code
 from app.utils.email import send_verification_email
 
@@ -65,3 +65,7 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
     roles = [role.tenVaiTro for role in user.vaiTro]
     access_token = create_access_token(data={"sub": user.email, "roles": roles})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/profile", response_model=UserOut)
+def get_profile(current_user: User = Depends(get_current_user)):
+    return current_user
