@@ -8,14 +8,34 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=8)
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
+
+class UserCreate(BaseModel):
+    tenNguoiDung: Optional[str] = None
+    hoTen: Optional[str] = None
+    soDienThoai: Optional[str] = None
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    vaiTro: Optional[List[int]] = None 
+
+class UserUpdate(BaseModel): 
+    tenNguoiDung: Optional[str] = None
+    hoTen: Optional[str] = None
+    soDienThoai: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=8)
+    vaiTro: Optional[List[int]] = None
+    trangThai: Optional[bool] = None
 
 class UserOut(BaseModel):
     maNguoiDung: int
-    tenNguoiDung: str
+    tenNguoiDung: Optional[str]
+    hoTen: Optional[str]
+    soDienThoai: Optional[str]
     email: EmailStr
     daXacThucEmail: bool
+    trangThai: bool
     vaiTro: List[RoleOut]
 
     class Config:
