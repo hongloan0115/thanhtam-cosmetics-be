@@ -8,6 +8,7 @@ from app.init_data.init_admin import init_admin
 from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import products
 from app.api.v1.endpoints import users
+from app.api.v1.endpoints import categories
 
 app = FastAPI(
     title="User Registration API",
@@ -37,3 +38,4 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
