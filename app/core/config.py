@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    CLOUD_NAME: str
+    API_KEY: str
+    API_SECRET: str
+
     class Config:
         env_file = ".env"
         extra = "allow"
