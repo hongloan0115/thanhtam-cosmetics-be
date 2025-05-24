@@ -21,5 +21,6 @@ class ImageUpdate(BaseModel):
 class ImageOut(ImageBase):
     maHinhAnh: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
