@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.schemas.user import UserRegister, UserLogin, UserOut
 from app.db.database import get_db
@@ -67,5 +67,9 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/profile", response_model=UserOut)
-def get_profile(current_user: User = Depends(get_current_user)):
-    return current_user
+def get_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).options(joinedload(User.gioHang), joinedload(User.vaiTro)).filter(User.maNguoiDung == current_user.maNguoiDung).first()
+    return user

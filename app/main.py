@@ -9,6 +9,7 @@ from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import products
 from app.api.v1.endpoints import users
 from app.api.v1.endpoints import categories
+from app.api.v1.endpoints import carts
 
 app = FastAPI(
     title="User Registration API",
@@ -39,3 +40,4 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
+app.include_router(carts.router, prefix="/api/carts", tags=["Carts"])

@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.user_role import VAITRO_NGUOIDUNG
-
 from app.db.database import Base
+
+# Không được xóa các import này vì chúng cần thiết cho các mối quan hệ và kiểu dữ liệu
+from app.models.cart import Cart
 
 class User(Base):
     __tablename__ = "NGUOIDUNG"
@@ -23,3 +25,4 @@ class User(Base):
     ngayCapNhat = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     vaiTro = relationship("Role", secondary=VAITRO_NGUOIDUNG, back_populates="nguoiDung")
+    gioHang = relationship("Cart", back_populates="nguoiDung")

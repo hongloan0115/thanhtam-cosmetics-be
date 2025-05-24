@@ -1,7 +1,9 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
+from datetime import datetime
 
 from app.schemas.role import RoleOut
+from app.schemas.cart import CartOut
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -37,9 +39,11 @@ class UserOut(BaseModel):
     daXacThucEmail: bool
     trangThai: bool
     vaiTro: List[RoleOut]
+    gioHang: List[CartOut] = []
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class Token(BaseModel):
     access_token: str

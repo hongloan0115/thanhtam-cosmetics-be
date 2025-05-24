@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.db.database import get_db
 from app.core.security import get_current_admin
@@ -27,7 +27,7 @@ def get_user_detail(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_current_admin)
 ):
-    user = crud_user.get_user_by_id(db, user_id)
+    user = db.query(User).options(joinedload(User.gioHangs), joinedload(User.vaiTro)).filter(User.maNguoiDung == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
