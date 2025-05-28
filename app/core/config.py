@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     API_KEY: str
     API_SECRET: str
 
+    VNPAY_TMN_CODE: str
+    VNPAY_HASH_SECRET: str
+    VNPAY_URL: str
+    VNPAY_RETURN_URL: str
+
+    FRONTEND_URL: str
+    
     class Config:
         env_file = ".env"
         extra = "allow"

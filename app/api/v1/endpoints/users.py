@@ -27,7 +27,7 @@ def get_user_detail(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_current_admin)
 ):
-    user = db.query(User).options(joinedload(User.gioHangs), joinedload(User.vaiTro)).filter(User.maNguoiDung == user_id).first()
+    user = db.query(User).options(joinedload(User.gioHang), joinedload(User.vaiTro)).filter(User.maNguoiDung == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

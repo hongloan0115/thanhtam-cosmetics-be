@@ -18,4 +18,5 @@ class Product(Base):
     maDanhMuc = Column(Integer, ForeignKey("DANHMUC.maDanhMuc"))
     danhMuc = relationship("Category", back_populates="sanPham")
     hinhAnh = relationship("Image", back_populates="sanPham")
-    chiTietGioHang = relationship("CartDetail", back_populates="sanPham")
+    gioHang = relationship("CartItem", back_populates="sanPham")
+    chiTietDonHang = relationship("OrderDetail", back_populates="sanPham")

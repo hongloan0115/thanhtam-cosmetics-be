@@ -3,7 +3,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.schemas.role import RoleOut
-from app.schemas.cart import CartOut
+from app.schemas.cart_item import CartItemOut  # sửa lại import cho đúng
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -39,7 +39,7 @@ class UserOut(BaseModel):
     daXacThucEmail: bool
     trangThai: bool
     vaiTro: List[RoleOut]
-    gioHang: List[CartOut] = []
+    gioHang: List[CartItemOut] = []
 
     model_config = {
         "from_attributes": True

@@ -10,6 +10,8 @@ from app.api.v1.endpoints import products
 from app.api.v1.endpoints import users
 from app.api.v1.endpoints import categories
 from app.api.v1.endpoints import carts
+from app.api.v1.endpoints import payment_methods
+from app.api.v1.endpoints import orders
 
 app = FastAPI(
     title="User Registration API",
@@ -40,4 +42,6 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
-app.include_router(carts.router, prefix="/api/carts", tags=["Carts"])
+app.include_router(carts.router, prefix="/api", tags=["Carts"])
+app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["Payment Methods"])
+app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])

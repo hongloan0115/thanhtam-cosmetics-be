@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from app.schemas.image import ImageOut
-from fastapi import Form, UploadFile, File
+from fastapi import Form
 
 class ProductBase(BaseModel):
     tenSanPham: str = Field(..., max_length=100)
