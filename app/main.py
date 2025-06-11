@@ -13,6 +13,7 @@ from app.api.v1.endpoints import categories
 from app.api.v1.endpoints import carts
 from app.api.v1.endpoints import payment_methods
 from app.api.v1.endpoints import orders
+# from app.api.v1.endpoints import websocket
 
 app = FastAPI(
     title="User Registration API",
@@ -47,3 +48,4 @@ app.include_router(categories.router, prefix="/api/categories", tags=["Categorie
 app.include_router(carts.router, prefix="/api", tags=["Carts"])
 app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["Payment Methods"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
+# app.include_router(websocket.router, prefix="/api/ws", tags=["WebSocket"])

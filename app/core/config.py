@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     FRONTEND_LOGIN_URL: str
     FRONTEND_URL: str
     
+    OPENAI_API_KEY: str
+    
     class Config:
         env_file = ".env"
         extra = "allow"
