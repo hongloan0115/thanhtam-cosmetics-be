@@ -15,7 +15,7 @@ class CartItemCreateRequest(BaseModel):
     maSanPham: int
     soLuong: int = 1
 
-@router.get("/cart/items", response_model=List[CartItemOut])
+@router.get("/", response_model=List[CartItemOut])
 def get_cart_items(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -26,7 +26,7 @@ def get_cart_items(
     ).all()
     return items
 
-@router.post("/cart/items", response_model=CartItemOut)
+@router.post("/add", response_model=CartItemOut)
 def add_item_to_cart(
     item: CartItemCreateRequest,
     db: Session = Depends(get_db),
@@ -53,7 +53,7 @@ def add_item_to_cart(
     db.refresh(new_item)
     return new_item
 
-@router.put("/cart/items/{cart_item_id}", response_model=CartItemOut)
+@router.put("/items/{cart_item_id}", response_model=CartItemOut)
 def update_cart_item(
     cart_item_id: int,
     update: CartItemUpdate,
@@ -73,7 +73,7 @@ def update_cart_item(
     db.refresh(cart_item)
     return cart_item
 
-@router.delete("/cart/items/{cart_item_id}", response_model=None)
+@router.delete("/items/{cart_item_id}", response_model=None)
 def remove_cart_item(
     cart_item_id: int,
     db: Session = Depends(get_db),
@@ -90,7 +90,7 @@ def remove_cart_item(
     db.commit()
     return {"message": "Item removed from cart"}
 
-@router.delete("/cart/clear", response_model=None)
+@router.delete("/clear", response_model=None)
 def clear_cart(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -102,7 +102,7 @@ def clear_cart(
     db.commit()
     return {"message": "Cart cleared successfully"}
 
-@router.put("/cart/select", response_model=None)
+@router.put("/select", response_model=None)
 def select_cart_items(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

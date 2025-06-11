@@ -50,7 +50,7 @@ app.include_router(google.router, prefix="/api/auth/google", tags=["Google Auth"
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
-app.include_router(carts.router, prefix="/api", tags=["Carts"])
+app.include_router(carts.router, prefix="/api/cart", tags=["Carts"])
 app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["Payment Methods"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 # app.include_router(websocket.router, prefix="/api/ws", tags=["WebSocket"])
