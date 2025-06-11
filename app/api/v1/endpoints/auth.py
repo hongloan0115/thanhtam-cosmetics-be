@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlalchemy.orm import Session, joinedload
 
-from app.schemas.user import UserRegister, UserLogin, UserOut
+from app.schemas.user import UserRegister, UserLogin, UserOut, UserUpdate
 from app.db.database import get_db
 from app.models.role import Role
 from app.models.user import User
@@ -48,11 +48,17 @@ def verify_email(code: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Mã xác thực không hợp lệ.")
     if user.daXacThucEmail:
-        return {"message": "Email đã được xác thực."}
+        return {
+            "message": "Email đã được xác thực.",
+            "redirect_url": "http://localhost:3000/auth/login"
+        }
     
     user.daXacThucEmail = True
     db.commit()
-    return {"message": "Xác thực email thành công."}
+    return {
+        "message": "Bạn đã xác thực thành công",
+        "redirect_url": "http://localhost:3000/auth/login"
+    }
 
 @router.post("/login")
 def login(user_in: UserLogin, db: Session = Depends(get_db)):
@@ -72,4 +78,50 @@ def get_profile(
     current_user: User = Depends(get_current_user)
 ):
     user = db.query(User).options(joinedload(User.gioHang), joinedload(User.vaiTro)).filter(User.maNguoiDung == current_user.maNguoiDung).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
     return user
+
+@router.put("/profile", response_model=UserOut)
+def update_profile(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).filter(User.maNguoiDung == current_user.maNguoiDung).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
+    # Cập nhật các trường cho phép
+    if user_update.tenNguoiDung is not None:
+        user.tenNguoiDung = user_update.tenNguoiDung
+    if user_update.hoTen is not None:
+        user.hoTen = user_update.hoTen
+    if user_update.soDienThoai is not None:
+        user.soDienThoai = user_update.soDienThoai
+    if user_update.email is not None:
+        # Kiểm tra email đã tồn tại chưa
+        existing = db.query(User).filter(User.email == user_update.email, User.maNguoiDung != user.maNguoiDung).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email đã tồn tại.")
+        user.email = user_update.email
+    # if user_update.anhDaiDien is not None:
+    #     user.anhDaiDien = user_update.anhDaiDien
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.post("/change-password")
+def change_password(
+    old_password: str = Body(...),
+    new_password: str = Body(..., min_length=8),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).filter(User.maNguoiDung == current_user.maNguoiDung).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
+    if not verify_password(old_password, user.matKhauMaHoa):
+        raise HTTPException(status_code=400, detail="Mật khẩu cũ không đúng.")
+    user.matKhauMaHoa = hash_password(new_password)
+    db.commit()
+    return {"message": "Đổi mật khẩu thành công."}
