@@ -11,6 +11,7 @@ class User(Base):
     tenNguoiDung = Column(String(50), unique=True, index=True)
     hoTen = Column(String(100))
     soDienThoai = Column(String(15))
+    anhDaiDien = Column(String(255), nullable=True)
 
     email = Column(String(100), unique=True, index=True)
     daXacThucEmail = Column(Boolean, default=False)

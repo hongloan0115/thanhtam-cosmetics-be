@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     VNPAY_URL: str
     VNPAY_RETURN_URL: str
 
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+    
+    FRONTEND_LOGIN_URL: str
     FRONTEND_URL: str
     
     class Config:

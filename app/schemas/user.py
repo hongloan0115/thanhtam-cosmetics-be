@@ -40,6 +40,20 @@ class UserOut(BaseModel):
     trangThai: bool
     vaiTro: List[RoleOut]
     gioHang: List[CartItemOut] = []
+    anhDaiDien: Optional[str] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class UserOutForOrder(BaseModel):
+    maNguoiDung: int
+    tenNguoiDung: Optional[str]
+    hoTen: Optional[str]
+    soDienThoai: Optional[str]
+    email: EmailStr
+    trangThai: bool
+    anhDaiDien: Optional[str] = None
 
     model_config = {
         "from_attributes": True
