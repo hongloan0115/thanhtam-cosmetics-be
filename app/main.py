@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 
 from app.db.database import engine, Base
 from app.init_data.init_roles import init_roles
@@ -15,16 +16,13 @@ from app.api.v1.endpoints import payment_methods
 from app.api.v1.endpoints import orders
 # from app.api.v1.endpoints import websocket
 
+from app.api.v1.endpoints.errors import custom_validation_exception_handler 
+
 app = FastAPI(
     title="User Registration API",
     description="Đăng ký người dùng với xác thực email và vai trò mặc định là KHACHHANG",
     version="1.0.0"
 )
-
-Base.metadata.create_all(bind=engine)
-
-init_roles() 
-init_admin()
 
 origins = [
     "http://localhost",
@@ -39,6 +37,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_exception_handler(RequestValidationError, custom_validation_exception_handler)
+
+Base.metadata.create_all(bind=engine)
+
+init_roles() 
+init_admin()
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(google.router, prefix="/api/auth/google", tags=["Google Auth"])
