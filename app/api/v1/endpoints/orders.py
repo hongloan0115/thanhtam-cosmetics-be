@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from fastapi.responses import RedirectResponse
@@ -14,20 +14,63 @@ from app.models.order import Order as OrderModel, TrangThaiDonHangEnum, TrangTha
 import urllib.parse
 import hashlib
 import hmac
-import datetime
+import enum
+from app.core.security import get_current_admin
 
 from app.db.database import get_db
 from app.models.order import Order as Order
 from app.models.order_detail import OrderDetail
-from app.schemas.order import OrderCreate, OrderCheckoutResponse
+from app.schemas.order import OrderCreate, OrderCheckoutResponse, OrderStatusEnum, OrderStatusUpdate, OrderOutForAdmin
 from app.schemas.order_detail import OrderDetailCreate
 from app.utils.vnpay import generate_vnpay_payment_url
 from app.core.logger import get_logger
 from app.core.config import settings
+from app.schemas.order import OrderOut
 
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+class TrangThaiThanhToanEnum(enum.Enum):
+    CHUATHANHTOAN = "CHƯA THANH TOÁN"
+    DATHANHTOAN = "ĐÃ THANH TOÁN"
+
+@router.get("/admin/all", response_model=List[OrderOutForAdmin])
+def admin_get_all_orders(db: Session = Depends(get_db), admin_user=Depends(get_current_admin)):
+    """
+    Admin: Lấy tất cả đơn hàng.
+    """
+    orders = db.query(OrderModel).order_by(OrderModel.ngayDat.desc()).all()
+    return orders
+
+@router.get("/admin/order/{maDonHang}", response_model=OrderOutForAdmin)
+def admin_get_order_detail(maDonHang: int, db: Session = Depends(get_db), admin_user=Depends(get_current_admin)):
+    """
+    Admin: Xem chi tiết đơn hàng theo mã.
+    """
+    order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+    return order
+
+@router.patch("/admin/order/update-status/{maDonHang}", response_model=OrderOutForAdmin)
+def admin_update_order_status(
+    maDonHang: int,
+    trangThaiCapNhat: OrderStatusUpdate = Body(...),
+    db: Session = Depends(get_db),
+    admin_user=Depends(get_current_admin)
+):
+    """
+    Admin: Cập nhật trạng thái đơn hàng.
+    """
+    order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+    order.trangThai = trangThaiCapNhat.trangThai
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order
 
 @router.post("/checkout", response_model=OrderCheckoutResponse)
 def create_order(
@@ -46,13 +89,12 @@ def create_order(
         tongTien=order_data.tongTien,
         trangThai=order_data.trangThai.value,
         ghiChu=order_data.ghiChu,
-        trangThaiThanhToan="CHUATHANHTOAN"
     )
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
 
-    # 2. Tạo chi tiết đơn hàng
+    # 2. Tạo chi tiết đơn hàng & cập nhật tồn kho sản phẩm
     for detail in order_details:
         db_detail = OrderDetail(
             maDonHang=db_order.maDonHang,
@@ -63,9 +105,26 @@ def create_order(
         )
         db.add(db_detail)
 
+        # Trừ số lượng tồn kho sản phẩm
+        product = db.query(Product).filter(Product.maSanPham == detail.maSanPham).first()
+        if product:
+            if product.soLuongTonKho is not None and product.soLuongTonKho >= detail.soLuong:
+                product.soLuongTonKho -= detail.soLuong
+            else:
+                raise HTTPException(status_code=400, detail=f"Sản phẩm {product.tenSanPham} không đủ số lượng tồn kho")
+            db.add(product)
+
     db.commit()
 
-    # 3. Tạo URL VNPay nếu phương thức thanh toán là VNPay (giả sử mã là 2)
+    # 3. Xóa các sản phẩm đã đặt khỏi giỏ hàng của người dùng
+    product_ids = [detail.maSanPham for detail in order_details]
+    db.query(CartItem).filter(
+        CartItem.maNguoiDung == order_data.maNguoiDung,
+        CartItem.maSanPham.in_(product_ids)
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    # 4. Tạo URL VNPay nếu phương thức thanh toán là VNPay (giả sử mã là 2)
     payment_url = None
     if db_order.maPhuongThuc == 2:
         payment_url = generate_vnpay_payment_url(db_order.maDonHang, float(db_order.tongTien))
@@ -74,38 +133,6 @@ def create_order(
         maDonHang=db_order.maDonHang,
         payment_url=payment_url
     )
-
-
-# @router.get("/admin/all", response_model=List[Order])
-# def get_all_orders_admin(
-#     db: Session = Depends(get_db)
-# ):
-#     """
-#     Lấy tất cả đơn hàng (dành cho admin).
-#     """
-#     orders = db.query(OrderModel).order_by(OrderModel.ngayDat.desc()).all()
-#     return orders
-
-# @router.put("/admin/update-status/{maDonHang}", response_model=Order)
-# def admin_update_order_status(
-#     maDonHang: int,
-#     update_in: OrderUpdate,
-#     db: Session = Depends(get_db)
-# ):
-#     """
-#     Admin cập nhật trạng thái đơn hàng.
-#     """
-#     order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
-#     if not order:
-#         raise HTTPException(status_code=404, detail="Order not found")
-#     if update_in.trangThai:
-#         order.trangThai = update_in.trangThai.value
-#     if update_in.ghiChu is not None:
-#         order.ghiChu = update_in.ghiChu
-#     db.add(order)
-#     db.commit()
-#     db.refresh(order)
-#     return order
 
 @router.get("/vnpay-return")
 async def vnpay_return(request: Request):
@@ -145,6 +172,8 @@ async def vnpay_return(request: Request):
         redirect_url = f"{frontend_url}?status=fail&error=invalid_signature"
         return RedirectResponse(url=redirect_url)
 
+
+
 # @router.get("/history/{maNguoiDung}", response_model=List[Order])
 # def get_order_history(
 #     maNguoiDung: int,
@@ -163,7 +192,7 @@ async def vnpay_return(request: Request):
 #     """
 #     order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
 #     if not order:
-#         raise HTTPException(status_code=404, detail="Order not found")
+#         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
 #     if order.trangThai == OrderStatusEnum.DABIHUY.value:
 #         raise HTTPException(status_code=400, detail="Order already cancelled")
 #     if order.trangThai == OrderStatusEnum.HOANTHANH.value:
