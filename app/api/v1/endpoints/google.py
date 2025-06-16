@@ -45,20 +45,10 @@ def google_callback(
     logger.info("Received Google OAuth callback")
     # frontend_url = settings.FRONTEND_LOGIN_URL
 
-    # Google OAuth authorization URL (Account Chooser)
-    google_auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth"
-        "?response_type=code"
-        f"&client_id={GOOGLE_CLIENT_ID}"
-        f"&redirect_uri={GOOGLE_REDIRECT_URI}"
-        "&scope=openid%20email%20profile"
-        "&access_type=offline"
-        "&prompt=consent"
-    )
-
     if error:
         logger.warning(f"Google OAuth error: {error}")
-        raise HTTPException(status_code=400, detail="Google OAuth error")
+        frontend_url = settings.FRONTEND_LOGIN_URL
+        return RedirectResponse(url=frontend_url)
 
     if not code:
         logger.error("Missing code in Google OAuth callback")
@@ -143,5 +133,5 @@ def google_callback(
 
     # Redirect to frontend with accessToken as query param
     frontend_url = settings.FRONTEND_LOGIN_URL
-    redirect_url = f"{frontend_url}?accessToken={access_token}"
+    redirect_url = f"{frontend_url}?accessToken={access_token}&isGoogle=true"
     return RedirectResponse(url=redirect_url)
