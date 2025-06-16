@@ -7,18 +7,56 @@ from app.models.category import Category
 logger = get_logger(__name__)
 
 def get_products(db: Session):
-    return db.query(Product).all()
+    logger.info("Fetching all products")
+    return db.query(Product).filter(Product.daXoa == False).all()
 
 def get_product_by_id(db: Session, product_id: int):
-    return db.query(Product).filter(Product.maSanPham == product_id).first()
+    logger.info(f"Fetching product by id: {product_id}")
+    return db.query(Product).filter(Product.maSanPham == product_id, Product.daXoa == False).first()
+
+def search_products_by_name(db: Session, name: str):
+    """Tìm kiếm sản phẩm theo tên (ilike)"""
+    logger.info(f"Searching products by name: {name}")
+    return db.query(Product).filter(
+        Product.tenSanPham.ilike(f"%{name}%"),
+        Product.daXoa == False
+    ).all()
+
+def filter_products(
+    db: Session,
+    maDanhMuc: int = None,
+    giaMin: float = None,
+    giaMax: float = None,
+    trangThai: bool = None,
+    thuongHieu: list = None
+):
+    """Lọc sản phẩm theo nhiều điều kiện: mã danh mục, giá bán, trạng thái, danh sách thương hiệu"""
+    logger.info(
+        f"Filtering products with maDanhMuc={maDanhMuc}, giaMin={giaMin}, giaMax={giaMax}, "
+        f"trangThai={trangThai}, thuongHieu={thuongHieu}"
+    )
+    query = db.query(Product).filter(Product.daXoa == False)
+    if maDanhMuc is not None:
+        query = query.filter(Product.maDanhMuc == maDanhMuc)
+    if giaMin is not None:
+        query = query.filter(Product.giaBan >= giaMin)
+    if giaMax is not None:
+        query = query.filter(Product.giaBan <= giaMax)
+    if trangThai is not None:
+        query = query.filter(Product.trangThai == trangThai)
+    if thuongHieu:
+        query = query.filter(Product.maThuongHieu.in_(thuongHieu))
+    return query.all()
 
 def create_product(db: Session, product: Product):
+    logger.info(f"Creating product: {product.tenSanPham}")
     db.add(product)
     db.commit()
     db.refresh(product)
     return product
 
 def update_product(db: Session, product_id: int, product_data: dict):
+    logger.info(f"Updating product id: {product_id} with data: {product_data}")
     product = db.query(Product).filter(Product.maSanPham == product_id).first()
     if product:
         for key, value in product_data.items():
@@ -28,10 +66,12 @@ def update_product(db: Session, product_id: int, product_data: dict):
     return product
 
 def delete_product(db: Session, product_id: int):
-    product = db.query(Product).filter(Product.maSanPham == product_id).first()
+    logger.info(f"Deleting product id: {product_id}")
+    product = db.query(Product).filter(Product.maSanPham == product_id, Product.daXoa == False).first()
     if product:
-        db.delete(product)
+        product.daXoa = True
         db.commit()
+        db.refresh(product)
     return product
 
 def search_products(

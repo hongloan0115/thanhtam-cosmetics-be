@@ -1,31 +1,68 @@
-import logging
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.database import get_db
 from app.core.security import get_current_admin
-from app.models.product import Product
+from app.models.product import Product, TrangThaiSanPham
 from app.models.image import Image
 from app.crud import product as crud_product
 from app.schemas.product import ProductUpdate, ProductOut, ProductCreateForm, ProductUpdateForm
 from app.schemas.image import ImageOut
-import cloudinary
-import cloudinary.uploader
-import filetype
-from app.core.config import settings
 from app.core.logger import get_logger
+from app.utils import image as image_utils
 
 logger = get_logger(__name__)
 
 router = APIRouter()
 
-# Thiết lập Cloudinary
-cloudinary.config(
-    cloud_name=settings.CLOUD_NAME,
-    api_key=settings.API_KEY,
-    api_secret=settings.API_SECRET
-)
+# Cần phải đưa các route cố định như /search, /filter lên trên các route động /{product_id} 
+# để tránh xung đột
+@router.get("/search", response_model=list[ProductOut])
+def search_products(
+    q: str = Query(..., min_length=1, description="Tên sản phẩm cần tìm"),
+    db: Session = Depends(get_db)
+):
+    logger.info(f"Tìm kiếm sản phẩm với tên: {q}")
+    products = crud_product.search_products_by_name(db, q)
+    result = []
+    for product in products:
+        main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
+        product_out = ProductOut.from_orm(product)
+        product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
+        result.append(product_out)
+    logger.info(f"Đã tìm thấy {len(result)} sản phẩm phù hợp với '{q}'")
+    return result
+
+@router.get("/filter", response_model=list[ProductOut])
+def filter_products(
+    maDanhMuc: int = Query(None, description="Mã danh mục"),
+    giaMin: int = Query(None, description="Giá tối thiểu"),
+    giaMax: int = Query(None, description="Giá tối đa"),
+    trangThai: bool = Query(None, description="Trạng thái sản phẩm"),
+    thuongHieu: List[str] = Query(None, description="Danh sách thương hiệu (có thể truyền nhiều giá trị)"),
+    db: Session = Depends(get_db)
+):
+    logger.info(
+        f"Lọc sản phẩm với các điều kiện: maDanhMuc={maDanhMuc}, giaMin={giaMin}, giaMax={giaMax}, "
+        f"trangThai={trangThai}, thuongHieu={thuongHieu}"
+    )
+    products = crud_product.filter_products(
+        db,
+        maDanhMuc=maDanhMuc,
+        giaMin=giaMin,
+        giaMax=giaMax,
+        trangThai=trangThai,
+        thuongHieu=thuongHieu
+    )
+    result = []
+    for product in products:
+        main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
+        product_out = ProductOut.from_orm(product)
+        product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
+        result.append(product_out)
+    logger.info(f"Đã lọc được {len(result)} sản phẩm")
+    return result
 
 @router.get("/", response_model=list[ProductOut])
 def read_products(db: Session = Depends(get_db)):
@@ -61,6 +98,19 @@ async def create_product(
 ):
     logger.info(f"Tạo sản phẩm mới: {product_in.tenSanPham}")
     product_data = vars(product_in)
+
+    # Kiểm tra số lượng để cập nhật trạng thái sản phẩm cho đúng
+    so_luong = product_data.get("soLuongTonKho")
+    if so_luong is not None:
+        if so_luong == 0:
+            product_data["trangThai"] = TrangThaiSanPham.HETHANG
+        elif so_luong < 5:
+            product_data["trangThai"] = TrangThaiSanPham.SAPHET
+        else:
+            # Nếu trạng thái không được truyền vào, mặc định là ĐANG BÁN
+            if not product_data.get("trangThai"):
+                product_data["trangThai"] = TrangThaiSanPham.DANGBAN
+
     product = Product(**product_data)
     db.add(product)
     db.commit()
@@ -70,42 +120,18 @@ async def create_product(
     if images:
         logger.info(f"Đang upload {len(images)} ảnh cho sản phẩm ID: {product.maSanPham}")
         for idx, image in enumerate(images):
-            if not image.content_type.startswith("image/"):
-                logger.warning(f"File {image.filename} không phải là ảnh")
-                raise HTTPException(status_code=400, detail=f"File {image.filename} không phải ảnh")
-            contents = await image.read()
-            kind = filetype.guess(contents)
-            if not kind or not kind.mime.startswith("image/"):
-                logger.warning(f"Ảnh không hợp lệ: {image.filename}")
-                raise HTTPException(status_code=400, detail=f"Định dạng ảnh không hợp lệ: {image.filename}")
-            if len(contents) > 5 * 1024 * 1024:
-                logger.warning(f"Ảnh quá lớn: {image.filename}")
-                raise HTTPException(status_code=413, detail=f"Ảnh quá lớn (tối đa 5MB): {image.filename}")
-
+            contents = await image_utils.validate_image_uploadfile(image)
             logger.info(f"Uploading {image.filename} to Cloudinary...")
-
-            try:
-                result = cloudinary.uploader.upload(
-                    contents,
-                    folder="products",
-                    use_filename=True,
-                    unique_filename=True,
-                    overwrite=False
-                )
-                logger.info(f"Upload thành công: {image.filename}")
-            except Exception as e:
-                logger.error(f"Lỗi khi upload ảnh {image.filename}: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Upload ảnh thất bại: {image.filename} - {str(e)}")
-
+            result = image_utils.upload_image_to_cloudinary(contents, folder="products")
+            logger.info(f"Upload thành công: {image.filename}")
             image_db = Image(
-                duongDanAnh=result["secure_url"],
+                duongDan=result["secure_url"],
                 maAnhClound=result["public_id"],
                 moTa=product_in.moTa,
-                laAnhChinh=1 if idx == 0 else 0,
+                laAnhChinh=True if idx == 0 else False,
                 maSanPham=product.maSanPham
             )
             db.add(image_db)
-
         db.commit()
         db.refresh(product)
         logger.info(f"Đã lưu {len(images)} ảnh vào database cho sản phẩm ID: {product.maSanPham}")
@@ -142,10 +168,7 @@ async def update_product(
     current_images = db.query(Image).filter(Image.maSanPham == product_id).all()
     for img in current_images:
         if img.maHinhAnh not in keep_image_ids:
-            try:
-                cloudinary.uploader.destroy(img.maAnhClound)
-            except Exception as e:
-                logger.warning(f"Lỗi khi xóa ảnh trên Cloudinary: {img.maAnhClound} - {str(e)}")
+            image_utils.delete_image_from_cloudinary(img.maAnhClound)
             db.delete(img)
     db.commit()
 
@@ -153,35 +176,12 @@ async def update_product(
     if images:
         logger.info(f"Đang upload {len(images)} ảnh mới cho sản phẩm ID: {product_id}")
         for idx, image in enumerate(images):
-            if not image.content_type.startswith("image/"):
-                logger.warning(f"File {image.filename} không phải là ảnh")
-                raise HTTPException(status_code=400, detail=f"File {image.filename} không phải ảnh")
-            contents = await image.read()
-            kind = filetype.guess(contents)
-            if not kind or not kind.mime.startswith("image/"):
-                logger.warning(f"Ảnh không hợp lệ: {image.filename}")
-                raise HTTPException(status_code=400, detail=f"Định dạng ảnh không hợp lệ: {image.filename}")
-            if len(contents) > 5 * 1024 * 1024:
-                logger.warning(f"Ảnh quá lớn: {image.filename}")
-                raise HTTPException(status_code=413, detail=f"Ảnh quá lớn (tối đa 5MB): {image.filename}")
-
+            contents = await image_utils.validate_image_uploadfile(image)
             logger.info(f"Uploading {image.filename} to Cloudinary...")
-
-            try:
-                result = cloudinary.uploader.upload(
-                    contents,
-                    folder="products",
-                    use_filename=True,
-                    unique_filename=True,
-                    overwrite=False
-                )
-                logger.info(f"Upload thành công: {image.filename}")
-            except Exception as e:
-                logger.error(f"Lỗi khi upload ảnh {image.filename}: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Upload ảnh thất bại: {image.filename} - {str(e)}")
-
+            result = image_utils.upload_image_to_cloudinary(contents, folder="products")
+            logger.info(f"Upload thành công: {image.filename}")
             image_db = Image(
-                duongDanAnh=result["secure_url"],
+                duongDan=result["secure_url"],
                 maAnhClound=result["public_id"],
                 moTa=product.moTa,
                 laAnhChinh=0,  # Có thể cập nhật logic chọn ảnh chính nếu cần
