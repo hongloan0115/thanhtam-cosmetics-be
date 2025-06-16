@@ -9,6 +9,7 @@ from app.init_data.init_admin import init_admin
 from app.api.v1.endpoints import auth
 from app.api.v1.endpoints import google
 from app.api.v1.endpoints import products
+from app.api.v1.endpoints import brands
 from app.api.v1.endpoints import users
 from app.api.v1.endpoints import categories
 from app.api.v1.endpoints import carts
@@ -48,6 +49,7 @@ init_admin()
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(google.router, prefix="/api/auth/google", tags=["Google Auth"])
 app.include_router(products.router, prefix="/api/products", tags=["Products"])
+app.include_router(brands.router, prefix="/api/brands", tags=["Brands"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 app.include_router(carts.router, prefix="/api/cart", tags=["Carts"])
