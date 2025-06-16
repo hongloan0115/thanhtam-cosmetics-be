@@ -11,7 +11,9 @@ class Category(Base):
     tenDanhMuc = Column(String(100), unique=True, index=True)
     moTa = Column(String(255))
     trangThai = Column(Boolean, default=True)
+    daXoa = Column(Boolean, default=False)
+
     ngayTao = Column(DateTime(timezone=True), server_default=func.now())
     ngayCapNhat = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    sanPham = relationship("Product", back_populates="danhMuc")
+    sanPham = relationship("Product", back_populates="danhMuc", lazy="joined")
