@@ -27,6 +27,8 @@ def search_products(
     products = crud_product.search_products_by_name(db, q)
     result = []
     for product in products:
+        if product.trangThai == TrangThaiSanPham.HETHANG:
+            continue
         main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
         product_out = ProductOut.from_orm(product)
         product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
@@ -57,6 +59,8 @@ def filter_products(
     )
     result = []
     for product in products:
+        if product.trangThai == TrangThaiSanPham.HETHANG:
+            continue
         main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
         product_out = ProductOut.from_orm(product)
         product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
@@ -70,6 +74,8 @@ def read_products(db: Session = Depends(get_db)):
     products = crud_product.get_products(db)
     result = []
     for product in products:
+        if product.trangThai == TrangThaiSanPham.HETHANG:
+            continue
         main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
         product_out = ProductOut.from_orm(product)
         product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
@@ -98,23 +104,9 @@ async def create_product(
 ):
     logger.info(f"Tạo sản phẩm mới: {product_in.tenSanPham}")
     product_data = vars(product_in)
-
-    # Kiểm tra số lượng để cập nhật trạng thái sản phẩm cho đúng
-    so_luong = product_data.get("soLuongTonKho")
-    if so_luong is not None:
-        if so_luong == 0:
-            product_data["trangThai"] = TrangThaiSanPham.HETHANG
-        elif so_luong < 5:
-            product_data["trangThai"] = TrangThaiSanPham.SAPHET
-        else:
-            # Nếu trạng thái không được truyền vào, mặc định là ĐANG BÁN
-            if not product_data.get("trangThai"):
-                product_data["trangThai"] = TrangThaiSanPham.DANGBAN
-
+    # Không can thiệp trạng thái ở đây, để CRUD xử lý theo số lượng tồn kho
     product = Product(**product_data)
-    db.add(product)
-    db.commit()
-    db.refresh(product)
+    product = crud_product.create_product(db, product)
     logger.info(f"Đã tạo sản phẩm với ID: {product.maSanPham}")
 
     if images:

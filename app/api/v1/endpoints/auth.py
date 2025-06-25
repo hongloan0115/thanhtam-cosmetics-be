@@ -63,8 +63,14 @@ def verify_email(code: str, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(user_in: UserLogin, db: Session = Depends(get_db)):
     user = get_user_by_email(db, user_in.email)
-    if not user or not verify_password(user_in.password, user.matKhauMaHoa):
-        raise HTTPException(status_code=400, detail="Sai tên đăng nhập hoặc mật khẩu.")
+    if not user:
+        raise HTTPException(status_code=400, detail="Người dùng không tồn tại.")
+    if user.email != user_in.email:
+        raise HTTPException(status_code=400, detail="Sai tên đăng nhập.")
+    if not verify_password(user_in.password, user.matKhauMaHoa):
+        raise HTTPException(status_code=400, detail="Sai mật khẩu.")
+    if user.trangThai is False:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị khóa")
     is_admin = any(role.tenVaiTro.lower() == "admin" for role in user.vaiTro)
     if not is_admin and not user.daXacThucEmail:
         raise HTTPException(status_code=400, detail="Email chưa được xác thực.")

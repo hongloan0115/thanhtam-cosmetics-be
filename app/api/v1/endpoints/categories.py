@@ -52,7 +52,12 @@ def create_category(
             status_code=status.HTTP_409_CONFLICT,
             detail="Danh mục đã tồn tại"
         )
-    return crud_category.create_category(db, category_in)
+    category = crud_category.create_category(db, category_in)
+    # Trả về category vừa tạo, soLuongSanPham mặc định là 0
+    return {
+        **category.__dict__,
+        "soLuongSanPham": getattr(category, "soLuongSanPham", 0)
+    }
 
 @router.put("/{category_id}", response_model=CategoryOut)
 def update_category(
@@ -73,7 +78,11 @@ def update_category(
     category = crud_category.update_category(db, category_id, update_data)
     if not category:
         raise HTTPException(status_code=404, detail="Không tìm thấy danh mục")
-    return category
+    # Trả về category vừa cập nhật, giữ lại soLuongSanPham nếu có
+    return {
+        **category.__dict__,
+        "soLuongSanPham": getattr(category, "soLuongSanPham", 0)
+    }
 
 @router.delete("/{category_id}", response_model=CategoryOut)
 def delete_category(

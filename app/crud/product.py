@@ -1,7 +1,7 @@
 from app.core.logger import get_logger
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from app.models.product import Product
+from app.models.product import Product, TrangThaiSanPham
 from app.models.category import Category
 
 logger = get_logger(__name__)
@@ -50,6 +50,14 @@ def filter_products(
 
 def create_product(db: Session, product: Product):
     logger.info(f"Creating product: {product.tenSanPham}")
+    # Xác định trạng thái dựa trên số lượng tồn kho
+    if product.soLuongTonKho is not None:
+        if product.soLuongTonKho == 0:
+            product.trangThai = TrangThaiSanPham.HETHANG
+        elif product.soLuongTonKho <= 5:
+            product.trangThai = TrangThaiSanPham.SAPHET
+        else:
+            product.trangThai = TrangThaiSanPham.DANGBAN
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -61,6 +69,14 @@ def update_product(db: Session, product_id: int, product_data: dict):
     if product:
         for key, value in product_data.items():
             setattr(product, key, value)
+        # Kiểm tra và cập nhật trạng thái nếu cập nhật số lượng tồn kho
+        if "soLuongTonKho" in product_data and product_data["soLuongTonKho"] is not None:
+            if product.soLuongTonKho == 0:
+                product.trangThai = TrangThaiSanPham.HETHANG
+            elif product.soLuongTonKho <= 5:
+                product.trangThai = TrangThaiSanPham.SAPHET
+            else:
+                product.trangThai = TrangThaiSanPham.DANGBAN
         db.commit()
         db.refresh(product)
     return product
@@ -82,6 +98,7 @@ def search_products(
 ):
     logger.info(f"Searching products with min_price={min_price}, max_price={max_price}, keywords={keywords}")
     query = db.query(Product).join(Category, Product.maDanhMuc == Category.maDanhMuc, isouter=True)
+    query = query.filter(Product.daXoa == False)  # chỉ lấy sản phẩm chưa xóa
 
     # Lọc theo khoảng giá
     if min_price is not None:
@@ -111,6 +128,7 @@ def get_products_for_context(db: Session, keywords: list, limit: int = 5):
         return ""
     
     query = db.query(Product).join(Category)
+    query = query.filter(Product.daXoa == False)  # chỉ lấy sản phẩm chưa xóa
     
     # Tìm kiếm theo từ khóa
     like_clauses = []
@@ -151,6 +169,7 @@ def check_products_exist(
     logger.info(f"Checking product existence with keywords={keywords}, min_price={min_price}, max_price={max_price}")
     
     query = db.query(Product).join(Category)
+    query = query.filter(Product.daXoa == False)  # chỉ lấy sản phẩm chưa xóa
 
     # Lọc theo khoảng giá
     if min_price is not None:
@@ -183,12 +202,14 @@ def get_basic_products_info(
     keywords: list = None,
     min_price: float = None,
     max_price: float = None,
-    limit: int = 5
+    limit: int = 5,
+    daXoa: bool = False
 ):
     """Lấy thông tin cơ bản của sản phẩm bao gồm ID, tên, giá và hình ảnh"""
     logger.info(f"Getting basic product info with keywords={keywords}")
     
     query = db.query(Product).join(Category, Product.maDanhMuc == Category.maDanhMuc, isouter=True)
+    query = query.filter(Product.daXoa == daXoa)  # chỉ lấy sản phẩm chưa xóa
 
     # Áp dụng các filter tương tự
     if min_price is not None:
@@ -231,12 +252,14 @@ def get_products_with_details(
     min_price: float = None,
     max_price: float = None,
     keywords: list = None,
-    limit: int = 10
+    limit: int = 10,
+    daXoa: bool = False
 ):
     """Lấy sản phẩm với đầy đủ thông tin để hiển thị cho người dùng"""
     logger.info(f"Getting products with details")
     
     query = db.query(Product).join(Category, Product.maDanhMuc == Category.maDanhMuc, isouter=True)
+    query = query.filter(Product.daXoa == daXoa)  # chỉ lấy sản phẩm chưa xóa
 
     # Lọc theo khoảng giá
     if min_price is not None:

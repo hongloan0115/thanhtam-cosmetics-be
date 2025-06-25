@@ -6,7 +6,6 @@ from app.db.database import Base
 
 class TrangThaiSanPham(enum.Enum):
     DANGBAN = "ĐANG BÁN"
-    NGUNGBAN = "NGỪNG BÁN"
     SAPHET = "SẮP HẾT"
     HETHANG = "HẾT HÀNG"
     SAPVE = "SẮP VỀ"

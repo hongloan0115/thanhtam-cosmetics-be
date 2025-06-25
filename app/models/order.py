@@ -29,9 +29,10 @@ class Order(Base):
     quanHuyen = Column(String(100), nullable=False)
     phuongXa = Column(String(100), nullable=False)
     maPhuongThuc = Column(Integer, ForeignKey("PHUONGTHUCTHANHTOAN.maPhuongThuc"), nullable=False)
+    hoTenNguoiNhan = Column(String(100), nullable=False)  # Thêm trường họ tên người nhận
+    soDienThoaiNguoiNhan = Column(String(20), nullable=False)  # Thêm trường số điện thoại người nhận
 
     chiTietDonHang = relationship("OrderDetail", back_populates="donHang")
     nguoiDung = relationship("User", back_populates="donHang")
     phuongThucThanhToan = relationship("PaymentMethod", back_populates="donHang")
 
-    

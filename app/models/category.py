@@ -8,7 +8,7 @@ class Category(Base):
     __tablename__ = "DANHMUC"
 
     maDanhMuc = Column(Integer, primary_key=True, index=True)
-    tenDanhMuc = Column(String(100), unique=True, index=True)
+    tenDanhMuc = Column(String(100), unique=False, index=True)
     moTa = Column(String(255))
     trangThai = Column(Boolean, default=True)
     daXoa = Column(Boolean, default=False)

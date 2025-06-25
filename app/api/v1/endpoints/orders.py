@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Body
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from fastapi.responses import RedirectResponse
 
-from app.schemas.order import OrderCreate, OrderCheckoutResponse, Order, OrderUpdate, OrderStatusEnum
+from app.schemas.order import OrderCreate, Order, OrderUpdate, OrderStatusEnum
 from app.schemas.order_detail import OrderDetailCreate
 from app.crud import order as crud_order
 from app.crud import order_detail as crud_order_detail
@@ -20,12 +20,13 @@ from app.core.security import get_current_admin
 from app.db.database import get_db
 from app.models.order import Order as Order
 from app.models.order_detail import OrderDetail
-from app.schemas.order import OrderCreate, OrderCheckoutResponse, OrderStatusEnum, OrderStatusUpdate, OrderOutForAdmin
+from app.schemas.order import OrderCreate, OrderStatusEnum, OrderStatusUpdate, OrderOutForAdmin, OrderOut
 from app.schemas.order_detail import OrderDetailCreate
 from app.utils.vnpay import generate_vnpay_payment_url
 from app.core.logger import get_logger
 from app.core.config import settings
-from app.schemas.order import OrderOut
+from app.schemas.order import OrderCustomerResponse
+from app.schemas.order import Order as OrderSchema
 
 logger = get_logger(__name__)
 
@@ -72,7 +73,7 @@ def admin_update_order_status(
     db.refresh(order)
     return order
 
-@router.post("/checkout", response_model=OrderCheckoutResponse)
+@router.post("/checkout", response_model=OrderCustomerResponse)
 def create_order(
     order_data: OrderCreate,
     order_details: list[OrderDetailCreate],
@@ -89,6 +90,8 @@ def create_order(
         tongTien=order_data.tongTien,
         trangThai=order_data.trangThai.value,
         ghiChu=order_data.ghiChu,
+        hoTenNguoiNhan=order_data.hoTenNguoiNhan,  # thêm trường này
+        soDienThoaiNguoiNhan=order_data.soDienThoaiNguoiNhan,  # thêm trường này
     )
     db.add(db_order)
     db.commit()
@@ -126,11 +129,31 @@ def create_order(
 
     # 4. Tạo URL VNPay nếu phương thức thanh toán là VNPay (giả sử mã là 2)
     payment_url = None
-    if db_order.maPhuongThuc == 2:
+    if db_order.maPhuongThuc == 1:
         payment_url = generate_vnpay_payment_url(db_order.maDonHang, float(db_order.tongTien))
 
-    return OrderCheckoutResponse(
-        maDonHang=db_order.maDonHang,
+    # Lấy lại đơn hàng vừa tạo, join chi tiết và phương thức thanh toán và sản phẩm
+    order = db.query(OrderModel).options(
+        joinedload(OrderModel.chiTietDonHang).joinedload(OrderDetail.sanPham),
+        joinedload(OrderModel.phuongThucThanhToan)
+    ).filter(OrderModel.maDonHang == db_order.maDonHang).first()
+
+    # Chuyển sang schema trả về cho khách hàng
+    return OrderCustomerResponse(
+        maDonHang=order.maDonHang,
+        ngayDat=order.ngayDat,
+        trangThai=order.trangThai,
+        trangThaiThanhToan=order.trangThaiThanhToan,
+        phuongThucThanhToan=order.phuongThucThanhToan,
+        tongTien=float(order.tongTien),
+        diaChiChiTiet=order.diaChiChiTiet,
+        tinhThanh=order.tinhThanh,
+        quanHuyen=order.quanHuyen,
+        phuongXa=order.phuongXa,
+        hoTenNguoiNhan=order.hoTenNguoiNhan,  # thêm trường này
+        soDienThoaiNguoiNhan=order.soDienThoaiNguoiNhan,  # thêm trường này
+        ghiChu=order.ghiChu,
+        chiTietDonHang=order.chiTietDonHang,
         payment_url=payment_url
     )
 
@@ -162,6 +185,13 @@ async def vnpay_return(request: Request):
         frontend_url = "http://localhost:3000/payment-result"  # Đảm bảo biến này có trong config, ví dụ: "https://your-frontend.com/payment-result"
         if response_code == "00":
             # ✅ Thành công
+            # Cập nhật trạng thái thanh toán của đơn hàng
+            with next(get_db()) as db:  # Sử dụng context manager để lấy session
+                order = db.query(OrderModel).filter(OrderModel.maDonHang == int(txn_ref)).first()
+                if order:
+                    order.trangThaiThanhToan = TrangThaiThanhToanEnum.DATHANHTOAN.value
+                    db.add(order)
+                    db.commit()
             redirect_url = f"{frontend_url}?order_id={txn_ref}&status=success"
             return RedirectResponse(url=redirect_url)
         else:
@@ -174,32 +204,39 @@ async def vnpay_return(request: Request):
 
 
 
-# @router.get("/history/{maNguoiDung}", response_model=List[Order])
-# def get_order_history(
-#     maNguoiDung: int,
-#     db: Session = Depends(get_db)
-# ):
-#     orders = db.query(OrderModel).filter(OrderModel.maNguoiDung == maNguoiDung).order_by(OrderModel.ngayDat.desc()).all()
-#     return orders
+@router.get("/history/{maNguoiDung}", response_model=List[OrderOut])
+def get_order_history(
+    maNguoiDung: int,
+    db: Session = Depends(get_db)
+):
+    orders = db.query(OrderModel).options(
+        joinedload(OrderModel.chiTietDonHang).joinedload(OrderDetail.sanPham)
+    ).filter(OrderModel.maNguoiDung == maNguoiDung).order_by(OrderModel.ngayDat.desc()).all()
+    return orders
 
-# @router.put("/cancel/{maDonHang}", response_model=Order)
-# def user_cancel_order(
-#     maDonHang: int,
-#     db: Session = Depends(get_db)
-# ):
-#     """
-#     Người dùng hủy đơn hàng sau khi đặt thành công.
-#     """
-#     order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
-#     if not order:
-#         raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
-#     if order.trangThai == OrderStatusEnum.DABIHUY.value:
-#         raise HTTPException(status_code=400, detail="Order already cancelled")
-#     if order.trangThai == OrderStatusEnum.HOANTHANH.value:
-#         raise HTTPException(status_code=400, detail="Order already completed")
-#     order.trangThai = OrderStatusEnum.DABIHUY.value
-#     db.add(order)
-#     db.commit()
-#     db.refresh(order)
-#     return order
+@router.put("/cancel/{maDonHang}", response_model=OrderSchema)
+def user_cancel_order(
+    maDonHang: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Người dùng hủy đơn hàng sau khi đặt thành công.
+    """
+    order = db.query(OrderModel).filter(OrderModel.maDonHang == maDonHang).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+    if order.trangThai != OrderStatusEnum.CHOXACNHAN.value:
+        raise HTTPException(status_code=400, detail="Chỉ có thể hủy đơn hàng khi đang ở trạng thái CHỜ XÁC NHẬN")
+    # Cộng lại số lượng tồn kho cho từng sản phẩm trong đơn hàng
+    order_details = db.query(OrderDetail).filter(OrderDetail.maDonHang == maDonHang).all()
+    for detail in order_details:
+        product = db.query(Product).filter(Product.maSanPham == detail.maSanPham).first()
+        if product:
+            product.soLuongTonKho = (product.soLuongTonKho or 0) + detail.soLuong
+            db.add(product)
+    order.trangThai = OrderStatusEnum.DABIHUY.value
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.database import get_db
@@ -78,6 +78,18 @@ def update_user(
         roles = db.query(Role).filter(Role.maVaiTro.in_(update_data["vaiTro"])).all()
         update_data["vaiTro"] = roles
     user = crud_user.update_user(db, user_id, update_data)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.patch("/{user_id}/status", response_model=UserOut)
+def update_user_status(
+    user_id: int,
+    trangThai: bool = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_current_admin)
+):
+    user = crud_user.update_user(db, user_id, {"trangThai": trangThai})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

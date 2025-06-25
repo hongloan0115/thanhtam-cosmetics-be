@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from app.schemas.product import ProductOut
 
 class OrderDetailBase(BaseModel):
     maDonHang: Optional[int] = None
@@ -25,3 +26,9 @@ class OrderDetailInDBBase(OrderDetailBase):
 
 class OrderDetail(OrderDetailInDBBase):
     pass
+
+class OrderDetailWithProduct(OrderDetailInDBBase):
+    sanPham: ProductOut
+
+    class Config:
+        orm_mode = True

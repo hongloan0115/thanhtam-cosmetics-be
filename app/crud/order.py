@@ -22,6 +22,8 @@ def create_order(db: Session, obj_in: OrderCreate) -> Order:
         quanHuyen=obj_in.quanHuyen,
         phuongXa=obj_in.phuongXa,
         maPhuongThuc=obj_in.maPhuongThuc,
+        hoTenNguoiNhan=obj_in.hoTenNguoiNhan,  # thêm trường này
+        soDienThoaiNguoiNhan=obj_in.soDienThoaiNguoiNhan,  # thêm trường này
     )
     db.add(db_obj)
     db.commit()

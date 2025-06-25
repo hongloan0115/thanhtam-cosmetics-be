@@ -46,7 +46,7 @@ class ProductCreateForm:
         giaBan: Optional[int] = Form(None),
         soLuongTonKho: Optional[int] = Form(None),
         giamGia: Optional[float] = Form(None),
-        trangThai: Optional[TrangThaiSanPham] = Form(TrangThaiSanPham.DANGBAN),
+        # trangThai: Optional[TrangThaiSanPham] = Form(TrangThaiSanPham.DANGBAN),
         maDanhMuc: Optional[int] = Form(...),
         maThuongHieu: Optional[int] = Form(...),  # Thay thế thuongHieu
     ):
@@ -55,7 +55,7 @@ class ProductCreateForm:
         self.giaBan = giaBan
         self.soLuongTonKho = soLuongTonKho
         self.giamGia = giamGia
-        self.trangThai = trangThai
+        # self.trangThai = trangThai
         self.maDanhMuc = maDanhMuc
         self.maThuongHieu = maThuongHieu
 
@@ -67,7 +67,7 @@ class ProductUpdateForm:
         giaBan: Optional[int] = Form(None),
         soLuongTonKho: Optional[int] = Form(None),
         giamGia: Optional[float] = Form(None),
-        trangThai: Optional[TrangThaiSanPham] = Form(None),
+        # trangThai: Optional[TrangThaiSanPham] = Form(None),
         maDanhMuc: Optional[int] = Form(None),
         maThuongHieu: Optional[int] = Form(None),  # Thay thế thuongHieu
         keep_image_ids: Optional[str] = Form(None),  # Chuỗi id, phân tách bởi dấu phẩy, ví dụ: "1,2,3"
@@ -77,7 +77,7 @@ class ProductUpdateForm:
         self.giaBan = giaBan
         self.soLuongTonKho = soLuongTonKho
         self.giamGia = giamGia
-        self.trangThai = trangThai
+        # self.trangThai = trangThai
         self.maDanhMuc = maDanhMuc
         self.maThuongHieu = maThuongHieu
         self.keep_image_ids = keep_image_ids
