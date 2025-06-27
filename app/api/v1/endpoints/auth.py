@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.schemas.user import UserRegister, UserLogin, UserOut, UserUpdate
@@ -6,7 +6,10 @@ from app.db.database import get_db
 from app.models.role import Role
 from app.models.user import User
 from app.crud.user import get_user_by_email
-from app.core.security import hash_password, verify_password, create_access_token, get_current_user
+from app.core.security import (
+    hash_password, verify_password, create_access_token, create_refresh_token,
+    decode_refresh_token, get_current_user
+)
 from app.utils.utils import generate_username, generate_verification_code
 from app.utils.email import send_verification_email
 
@@ -76,7 +79,12 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email chưa được xác thực.")
     roles = [role.tenVaiTro for role in user.vaiTro]
     access_token = create_access_token(data={"sub": user.email, "roles": roles})
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(data={"sub": user.email, "roles": roles})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 @router.get("/profile", response_model=UserOut)
 def get_profile(
@@ -131,3 +139,31 @@ def change_password(
     user.matKhauMaHoa = hash_password(new_password)
     db.commit()
     return {"message": "Đổi mật khẩu thành công."}
+
+@router.post("/refresh-token")
+def refresh_token(request: Request, db: Session = Depends(get_db)):
+    body = request.json() if hasattr(request, "json") else {}
+    # Lấy refresh token từ body hoặc header
+    import asyncio
+    async def get_body():
+        return await request.json()
+    try:
+        body = asyncio.run(get_body())
+    except Exception:
+        body = {}
+    refresh_token = body.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="Refresh token is required.")
+    payload = decode_refresh_token(refresh_token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.")
+    email = payload.get("sub")
+    roles = payload.get("roles", [])
+    user = get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
+    access_token = create_access_token(data={"sub": user.email, "roles": roles})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }

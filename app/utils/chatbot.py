@@ -11,22 +11,23 @@ class QuestionType(Enum):
     PRODUCT_ADVICE = "product_advice"    # Tư vấn sản phẩm cần context từ DB
     GENERAL_INFO = "general_info"        # Thông tin chung về cửa hàng
     UNRELATED = "unrelated"              # Câu hỏi không liên quan
+    POSSIBLY_RELATED = "possibly_related" # Câu hỏi có thể liên quan đến cửa hàng nhưng chưa rõ ràng
 
-def classify_question(message: str) -> QuestionType:
+def classify_question(message: str, history=None) -> QuestionType:
     """Sử dụng AI để phân loại câu hỏi thay vì từ khóa"""
     try:
-        ai_classification = classify_question_with_ai(message)
+        ai_classification = classify_question_with_ai(message, history=history)
         
         # Map AI response to enum
         classification_map = {
             "search_products": QuestionType.SEARCH_PRODUCTS,
             "product_advice": QuestionType.PRODUCT_ADVICE,
             "general_info": QuestionType.GENERAL_INFO,
-            "unrelated": QuestionType.UNRELATED
+            "unrelated": QuestionType.UNRELATED,
+            "possibly_related": QuestionType.POSSIBLY_RELATED
         }
         
         return classification_map.get(ai_classification, QuestionType.GENERAL_INFO)
-        
     except Exception as e:
         logger.error(f"Error in question classification: {e}")
         return QuestionType.GENERAL_INFO  # Default fallback
@@ -41,10 +42,10 @@ def format_product_response(product):
     response += f"\n🔗 Xem chi tiết: {product['link']}"
     return response
 
-def handle_search_products(message: str, db):
+def handle_search_products(message: str, db, history=None):
     """Xử lý câu hỏi tìm kiếm sản phẩm"""
     logger.info("Handling search products question")
-    gpt_response = call_gpt(message)
+    gpt_response = call_gpt(message, history=history)
     
     func_call = gpt_response.get("function_call")
     if func_call:
@@ -110,10 +111,10 @@ def handle_search_products(message: str, db):
     
     return [gpt_response.get("content", "Tôi có thể giúp bạn tìm kiếm sản phẩm. Hãy cho tôi biết bạn đang tìm gì?")]
 
-def handle_product_advice(message: str, db):
+def handle_product_advice(message: str, db, history=None):
     """Xử lý câu hỏi tư vấn sản phẩm"""
     logger.info("Handling product advice question")
-    gpt_response = call_gpt(message)
+    gpt_response = call_gpt(message, history=history)
     
     func_call = gpt_response.get("function_call")
     if func_call and func_call.get("name") == "get_product_context":
@@ -156,25 +157,28 @@ def handle_product_advice(message: str, db):
     
     return [gpt_response.get("content", "Tôi có thể tư vấn sản phẩm cho bạn. Hãy cho tôi biết bạn cần tư vấn gì?")]
 
-def handle_general_info(message: str):
+def handle_general_info(message: str, history=None):
     """Xử lý câu hỏi thông tin chung"""
     logger.info("Handling general info question")
-    gpt_response = call_gpt(message)
+    gpt_response = call_gpt(message, history=history)
     return [gpt_response.get("content", "Cảm ơn bạn đã quan tâm đến cửa hàng Thanh Tâm.")]
 
-def process_chat(message: str, db):
+def process_chat(message: str, db, history=None):
     logger.info(f"Processing chat message: {message}")
-    
-    question_type = classify_question(message)
+    question_type = classify_question(message, history=history)
     logger.info(f"Question classified as: {question_type.value}")
     
     try:
         if question_type == QuestionType.SEARCH_PRODUCTS:
-            return handle_search_products(message, db)
+            return handle_search_products(message, db, history=history)
         elif question_type == QuestionType.PRODUCT_ADVICE:
-            return handle_product_advice(message, db)
+            return handle_product_advice(message, db, history=history)
         elif question_type == QuestionType.GENERAL_INFO:
-            return handle_general_info(message)
+            return handle_general_info(message, history=history)
+        elif question_type == QuestionType.POSSIBLY_RELATED:
+            return [
+                "Câu hỏi của bạn có thể liên quan đến cửa hàng Thanh Tâm. Bạn vui lòng cung cấp thêm chi tiết hoặc làm rõ hơn để tôi có thể hỗ trợ tốt nhất nhé!"
+            ]
         else:
             return ["Tôi chỉ hỗ trợ các câu hỏi liên quan đến cửa hàng mỹ phẩm Thanh Tâm. Bạn có thể hỏi về sản phẩm, giá cả, hoặc dịch vụ của chúng tôi."]
     except Exception as e:

@@ -14,12 +14,29 @@ async def chat(ws: WebSocket, db=Depends(get_db)):
     logger.info("WebSocket connection accepted")
     try:
         while True:
-            msg = await ws.receive_text()
+            data = await ws.receive_text()
+            # Nếu client gửi dạng JSON chứa cả message và history
+            import json
+            try:
+                payload = json.loads(data)
+                msg = payload["message"]
+                history = payload.get("history")
+                # Chỉ lấy 2 tin gần nhất nếu có
+                if history and isinstance(history, list):
+                    history = history[-15:]
+            except Exception:
+                msg = data
+                history = None
+
             logger.info(f"Received message: {msg}")
-            responses = process_chat(msg, db)
+            responses = process_chat(msg, db, history=history)
             
             # Gửi từng phản hồi với delay tự nhiên
             for i, response in enumerate(responses):
+                # Đảm bảo response là str
+                if not isinstance(response, str):
+                    import json
+                    response = json.dumps(response, ensure_ascii=False)
                 await ws.send_text(response)
                 logger.info(f"Sent response {i+1}: {response}")
                 
