@@ -21,15 +21,17 @@ async def chat(ws: WebSocket, db=Depends(get_db)):
                 payload = json.loads(data)
                 msg = payload["message"]
                 history = payload.get("history")
-                # Chỉ lấy 2 tin gần nhất nếu có
+                summary = payload.get("summary")  # nhận summary từ FE
+                # Chỉ lấy 5 tin gần nhất nếu có
                 if history and isinstance(history, list):
-                    history = history[-15:]
+                    history = history[-5:]
             except Exception:
                 msg = data
                 history = None
+                summary = None
 
             logger.info(f"Received message: {msg}")
-            responses = process_chat(msg, db, history=history)
+            responses = process_chat(msg, db, history=history, summary=summary)
             
             # Gửi từng phản hồi với delay tự nhiên
             for i, response in enumerate(responses):

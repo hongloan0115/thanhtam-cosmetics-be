@@ -146,15 +146,17 @@ def get_products_for_context(db: Session, keywords: list, limit: int = 5):
     products = query.limit(limit).all()
     
     if not products:
-        return ""
+        logger.info("Không có sản phẩm nào phù hợp")
+        return "Không có sản phẩm nào phù hợp"
     
-    # Tạo context string
+    # Tạo context string, bổ sung số lượng tồn kho
     context_parts = []
     for product in products:
         context_parts.append(
             f"- {product.tenSanPham}: Giá {product.giaBan:,}đ. "
+            f"Số lượng tồn kho: {product.soLuongTonKho if product.soLuongTonKho is not None else 'Không xác định'}. "
             f"Mô tả: {product.moTa or 'Chưa có mô tả'}. "
-            f"Danh mục: {product.category.tenDanhMuc if product.category else 'Chưa phân loại'}"
+            f"Danh mục: {product.danhMuc.tenDanhMuc if product.danhMuc else 'Chưa phân loại'}"
         )
     
     return "\n".join(context_parts)

@@ -12,11 +12,12 @@ class QuestionType(Enum):
     GENERAL_INFO = "general_info"        # Thông tin chung về cửa hàng
     UNRELATED = "unrelated"              # Câu hỏi không liên quan
     POSSIBLY_RELATED = "possibly_related" # Câu hỏi có thể liên quan đến cửa hàng nhưng chưa rõ ràng
+    COSMETIC_KNOWLEDGE = "cosmetic_knowledge"  # Thêm dòng này
 
-def classify_question(message: str, history=None) -> QuestionType:
+def classify_question(message: str, history=None, summary=None) -> QuestionType:
     """Sử dụng AI để phân loại câu hỏi thay vì từ khóa"""
     try:
-        ai_classification = classify_question_with_ai(message, history=history)
+        ai_classification = classify_question_with_ai(message, history=history, summary=summary)
         
         # Map AI response to enum
         classification_map = {
@@ -24,7 +25,8 @@ def classify_question(message: str, history=None) -> QuestionType:
             "product_advice": QuestionType.PRODUCT_ADVICE,
             "general_info": QuestionType.GENERAL_INFO,
             "unrelated": QuestionType.UNRELATED,
-            "possibly_related": QuestionType.POSSIBLY_RELATED
+            "possibly_related": QuestionType.POSSIBLY_RELATED,
+            "cosmetic_knowledge": QuestionType.COSMETIC_KNOWLEDGE  # Bổ sung dòng này
         }
         
         return classification_map.get(ai_classification, QuestionType.GENERAL_INFO)
@@ -42,10 +44,10 @@ def format_product_response(product):
     response += f"\n🔗 Xem chi tiết: {product['link']}"
     return response
 
-def handle_search_products(message: str, db, history=None):
+def handle_search_products(message: str, db, history=None, summary=None):
     """Xử lý câu hỏi tìm kiếm sản phẩm"""
     logger.info("Handling search products question")
-    gpt_response = call_gpt(message, history=history)
+    gpt_response = call_gpt(message, history=history, summary=summary)
     
     func_call = gpt_response.get("function_call")
     if func_call:
@@ -111,10 +113,10 @@ def handle_search_products(message: str, db, history=None):
     
     return [gpt_response.get("content", "Tôi có thể giúp bạn tìm kiếm sản phẩm. Hãy cho tôi biết bạn đang tìm gì?")]
 
-def handle_product_advice(message: str, db, history=None):
+def handle_product_advice(message: str, db, history=None, summary=None):
     """Xử lý câu hỏi tư vấn sản phẩm"""
     logger.info("Handling product advice question")
-    gpt_response = call_gpt(message, history=history)
+    gpt_response = call_gpt(message, history=history, summary=summary)
     
     func_call = gpt_response.get("function_call")
     if func_call and func_call.get("name") == "get_product_context":
@@ -157,24 +159,42 @@ def handle_product_advice(message: str, db, history=None):
     
     return [gpt_response.get("content", "Tôi có thể tư vấn sản phẩm cho bạn. Hãy cho tôi biết bạn cần tư vấn gì?")]
 
-def handle_general_info(message: str, history=None):
+def handle_general_info(message: str, history=None, summary=None):
     """Xử lý câu hỏi thông tin chung"""
     logger.info("Handling general info question")
-    gpt_response = call_gpt(message, history=history)
+    gpt_response = call_gpt(message, history=history, summary=summary)
     return [gpt_response.get("content", "Cảm ơn bạn đã quan tâm đến cửa hàng Thanh Tâm.")]
 
-def process_chat(message: str, db, history=None):
+def process_chat(message: str, db, history=None, summary=None):
     logger.info(f"Processing chat message: {message}")
-    question_type = classify_question(message, history=history)
+    question_type = classify_question(message, history=history, summary=summary)
     logger.info(f"Question classified as: {question_type.value}")
-    
     try:
         if question_type == QuestionType.SEARCH_PRODUCTS:
-            return handle_search_products(message, db, history=history)
+            return handle_search_products(message, db, history=history, summary=summary)
         elif question_type == QuestionType.PRODUCT_ADVICE:
-            return handle_product_advice(message, db, history=history)
+            return handle_product_advice(message, db, history=history, summary=summary)
         elif question_type == QuestionType.GENERAL_INFO:
-            return handle_general_info(message, history=history)
+            return handle_general_info(message, history=history, summary=summary)
+        elif question_type == QuestionType.COSMETIC_KNOWLEDGE:
+            # Tìm sản phẩm liên quan dựa trên từ khóa trong câu hỏi
+            import re
+            keywords = [w for w in re.findall(r'\w+', message) if len(w) > 2]
+            # Lấy context sản phẩm liên quan
+            context_data = get_products_for_context(db, keywords, limit=5)
+            # Nếu không có sản phẩm phù hợp, truyền context rõ ràng cho chatbot
+            gpt_result = call_gpt(
+                message,
+                context_data=context_data,
+                history=history,
+                summary=summary
+            )
+            # Chỉ trả về nội dung trả lời chính
+            content = gpt_result.get("content")
+            if content:
+                return [content]
+            else:
+                return ["Xin lỗi, tôi chưa có câu trả lời phù hợp."]
         elif question_type == QuestionType.POSSIBLY_RELATED:
             return [
                 "Câu hỏi của bạn có thể liên quan đến cửa hàng Thanh Tâm. Bạn vui lòng cung cấp thêm chi tiết hoặc làm rõ hơn để tôi có thể hỗ trợ tốt nhất nhé!"
