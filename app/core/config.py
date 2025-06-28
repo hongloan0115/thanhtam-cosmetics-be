@@ -7,6 +7,7 @@ class DBSettings(BaseSettings):
     DB_USER: str
     DB_PASSWORD: str
     DB_NAME: str
+    MYSQL_PUBLIC_URL: str
 
     class Config:
         env_file = ".env"
