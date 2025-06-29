@@ -18,6 +18,7 @@ from app.api.v1.endpoints import orders
 from app.api.v1.endpoints import websocket
 from app.api.v1.endpoints import statistics
 from app.api.v1.endpoints import chat_summary
+from app.core.config import settings
 
 from app.api.v1.endpoints.errors import custom_validation_exception_handler 
 
@@ -31,7 +32,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://myphamthanhtam.netlify.app"
+    settings.FRONTEND_URL
 ]
 
 app.add_middleware(

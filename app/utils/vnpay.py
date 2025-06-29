@@ -17,7 +17,7 @@ def generate_vnpay_payment_url(order_id: int, amount: float, order_desc="Thanh t
         "vnp_OrderInfo": order_desc,
         "vnp_OrderType": "other",
         "vnp_Locale": "vn",
-        "vnp_ReturnUrl": "http://localhost:8000/api/orders/vnpay-return",
+        "vnp_ReturnUrl": f"{settings.BACKEND_URL}/api/orders/vnpay-return",
         "vnp_IpAddr": "127.0.0.1",
         "vnp_CreateDate": datetime.now().strftime("%Y%m%d%H%M%S")
     }

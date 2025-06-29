@@ -14,7 +14,7 @@ from typing import Optional
 
 GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI = settings.GOOGLE_REDIRECT_URI
+GOOGLE_REDIRECT_URI = f"{settings.BACKEND_URL}/api/auth/google/callback"
 
 logger = get_logger(__name__)
 
@@ -43,11 +43,10 @@ def google_callback(
     request: Request = None
 ):
     logger.info("Received Google OAuth callback")
-    # frontend_url = settings.FRONTEND_LOGIN_URL
 
     if error:
         logger.warning(f"Google OAuth error: {error}")
-        frontend_url = settings.FRONTEND_LOGIN_URL
+        frontend_url = f"{settings.FRONTEND_URL}/auth/login"
         return RedirectResponse(url=frontend_url)
 
     if not code:
@@ -132,6 +131,6 @@ def google_callback(
     logger.info(f"Access token: {access_token}")
 
     # Redirect to frontend with accessToken as query param
-    frontend_url = settings.FRONTEND_LOGIN_URL
+    frontend_url = f"{settings.FRONTEND_URL}/auth/login"
     redirect_url = f"{frontend_url}?accessToken={access_token}&isGoogle=true"
     return RedirectResponse(url=redirect_url)

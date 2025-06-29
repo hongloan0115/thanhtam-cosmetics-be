@@ -12,6 +12,7 @@ from app.core.security import (
 )
 from app.utils.utils import generate_username, generate_verification_code
 from app.utils.email import send_verification_email
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -53,14 +54,14 @@ def verify_email(code: str, db: Session = Depends(get_db)):
     if user.daXacThucEmail:
         return {
             "message": "Email đã được xác thực.",
-            "redirect_url": "http://localhost:3000/auth/login"
+            "redirect_url": f"{settings.FRONTEND_URL}/auth/login"
         }
     
     user.daXacThucEmail = True
     db.commit()
     return {
         "message": "Bạn đã xác thực thành công",
-        "redirect_url": "http://localhost:3000/auth/login"
+        "redirect_url": f"{settings.FRONTEND_URL}/auth/login"
     }
 
 @router.post("/login")

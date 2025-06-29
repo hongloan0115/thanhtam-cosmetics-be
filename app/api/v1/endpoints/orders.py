@@ -45,7 +45,7 @@ def admin_get_all_orders(db: Session = Depends(get_db), admin_user=Depends(get_c
     return orders
 
 @router.get("/admin/order/{maDonHang}", response_model=OrderOutForAdmin)
-def admin_get_order_detail(maDonHang: int, db: Session = Depends(get_db), admin_user=Depends(get_current_admin)):
+def admin_get_order_detail(maDonHang: int, db: Session = Depends(get_db)):
     """
     Admin: Xem chi tiết đơn hàng theo mã.
     """
@@ -182,7 +182,7 @@ async def vnpay_return(request: Request):
         response_code = input_data.get("vnp_ResponseCode")
         txn_ref = input_data.get("vnp_TxnRef")
 
-        frontend_url = "http://localhost:3000/payment-result"  # Đảm bảo biến này có trong config, ví dụ: "https://your-frontend.com/payment-result"
+        frontend_url = f"{settings.FRONTEND_URL}/payment-result"  # Đảm bảo biến này có trong config, ví dụ: "https://your-frontend.com/payment-result"
         if response_code == "00":
             # ✅ Thành công
             # Cập nhật trạng thái thanh toán của đơn hàng
