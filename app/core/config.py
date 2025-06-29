@@ -46,14 +46,12 @@ class Settings(BaseSettings):
     VNPAY_TMN_CODE: str
     VNPAY_HASH_SECRET: str
     VNPAY_URL: str
-    VNPAY_RETURN_URL: str
 
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
-    GOOGLE_REDIRECT_URI: str
     
-    FRONTEND_LOGIN_URL: str
     FRONTEND_URL: str
+    BACKEND_URL: str
     
     OPENAI_API_KEY: str
     
