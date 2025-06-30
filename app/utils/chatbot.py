@@ -159,10 +159,21 @@ def handle_product_advice(message: str, db, history=None, summary=None):
     
     return [gpt_response.get("content", "Tôi có thể tư vấn sản phẩm cho bạn. Hãy cho tôi biết bạn cần tư vấn gì?")]
 
+# Thêm biến chứa chính sách của cửa hàng
+STORE_POLICIES = """
+Chính sách cửa hàng Thanh Tâm:
+- Đổi trả sản phẩm trong vòng 7 ngày nếu có lỗi từ nhà sản xuất.
+- Phí vận chuyển tất cả các khu vực trong nước là 30.000đ.
+- Cam kết sản phẩm chính hãng 100%.
+- Hỗ trợ tư vấn miễn phí về sản phẩm và cách sử dụng.
+- Nhận đặt hàng online qua website, fanpage và hotline.
+- Thời gian làm việc của cửa hàng Thanh Tâm: 8h00 - 21h00 tất cả các ngày trong tuần.
+"""
+
 def handle_general_info(message: str, history=None, summary=None):
-    """Xử lý câu hỏi thông tin chung"""
+    """Xử lý câu hỏi thông tin chung về cửa hàng"""
     logger.info("Handling general info question")
-    gpt_response = call_gpt(message, history=history, summary=summary)
+    gpt_response = call_gpt(message, context_data=STORE_POLICIES, history=history, summary=summary)
     return [gpt_response.get("content", "Cảm ơn bạn đã quan tâm đến cửa hàng Thanh Tâm.")]
 
 def process_chat(message: str, db, history=None, summary=None):
