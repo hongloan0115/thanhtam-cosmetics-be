@@ -83,6 +83,22 @@ def read_products(db: Session = Depends(get_db)):
     logger.info(f"Đã trả về {len(result)} sản phẩm")
     return result
 
+@router.get("/admin", response_model=list[ProductOut])
+def read_products_admin(
+    db: Session = Depends(get_db),
+    admin_user=Depends(get_current_admin)
+):
+    logger.info("Admin lấy danh sách tất cả sản phẩm (bao gồm cả hết hàng)")
+    products = crud_product.get_products(db)
+    result = []
+    for product in products:
+        main_images = [img for img in product.hinhAnh if img.laAnhChinh == 1]
+        product_out = ProductOut.from_orm(product)
+        product_out.hinhAnh = [ImageOut.from_orm(main_images[0])] if main_images else []
+        result.append(product_out)
+    logger.info(f"Admin đã trả về {len(result)} sản phẩm (bao gồm cả hết hàng)")
+    return result
+
 @router.get("/{product_id}", response_model=ProductOut)
 def read_product(product_id: int, db: Session = Depends(get_db)):
     logger.info(f"Đang lấy thông tin sản phẩm với ID: {product_id}")
